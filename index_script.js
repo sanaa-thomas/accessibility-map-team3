@@ -57,6 +57,11 @@ document.addEventListener("DOMContentLoaded", function() {
 
         if (!end) errors.push("Ending location is required.");
         else if (!isValidBuilding(end)) errors.push(`"${end}" is not a valid building.`);
+        
+        // Check if start and end are the same 
+        if (isValidBuilding(start) && isValidBuilding(end) && normalize(start) === normalize(end)) {
+            errors.push("Starting and ending locations cannot be the same.");
+        }
 
         if (errors.length > 0) {
             alert(errors.join("\n"));

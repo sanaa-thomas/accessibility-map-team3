@@ -10,8 +10,7 @@ It uses PowerShell examples (Windows). Adjust commands for other shells if neede
 
 Recommended packages (install in your virtualenv):
 ```powershell
-python -m pip install -U pip
-python -m pip install fastapi uvicorn aiomysql mysql-connector-python
+python -m pip install aiomysql
 ```
 # PSA: If you see yellow marking on the file type "# type: ignore" it'll remove that. Also I removed Bcrypt
 
@@ -91,21 +90,16 @@ Or the one you just create for  yourself
 ```json
 { "success": true, "message": "Login successful" }
 ```
-## Optional (Not required)
-
-## 6) Test from PowerShell (programmatic)
-Use `Invoke-RestMethod` for a quick check:
-
-```powershell
-$body = @{ username = 'testadmin'; password = 'secret1234' } | ConvertTo-Json
-Invoke-RestMethod -Method Post -ContentType 'application/json' -Body $body http://127.0.0.1:8000/auth/login
-```
-
-Or use `curl`:
-
-```powershell
-curl -X POST http://127.0.0.1:8000/auth/login -H "Content-Type: application/json" -d '{"username":"testadmin","password":"secret1234"}'
-```
+## 6) Reports
+1. Use a JSON body like:
+  ```json
+  {"report": "Sidewalk blocked at entrance A"}
+  ```
+2. Expected Success Body supposed to be
+   ```json
+  {"success": true,
+  "message": "Report submitted"}
+  ```
 
 ## Troubleshooting
 - Access denied (1045) when starting the app:

@@ -1,48 +1,32 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-import mysql.connector  # type: ignore
 import os
+import aiomysql  # type: ignore
 from database import get_db_pool
 
 router = APIRouter()
-DB_CONFIG = {
-    "host": os.getenv("DB_HOST", "localhost"),
-    "user": os.getenv("DB_USER", "root"),
-    "password": os.getenv("DB_PASSWORD", "secret1234"),
-    "database": os.getenv("DB_NAME", "campus_map"),
-}
 
 class LoginRequest(BaseModel):
     username: str
     password: str
 
 @router.post("/login")
-def login(request: LoginRequest):
-    conn = None
-    cursor = None
+async def login(request: LoginRequest):
     try:
-        conn = mysql.connector.connect(**DB_CONFIG)
-        cursor = conn.cursor(dictionary=True)
-
-        # Row-by-row search: iterate all accounts and compare
-        cursor.execute("SELECT * FROM Admin")
-        for row in cursor:
-            # use 'password'
-            if row.get("username") == request.username and row.get("password") == request.password:
-                return {"success": True, "message": "Login successful"}
-        # no match found
-        raise HTTPException(status_code=401, detail="Invalid username or password")
+        pool = await get_db_pool()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                await cur.execute("SELECT password FROM Admin WHERE username=%s", (request.username,))
+                row = await cur.fetchone()
+                if not row:
+                    raise HTTPException(status_code=401, detail="Invalid username or password")
+                stored = row.get("password")
+                # If you later migrate to hashed passwords, perform hash check here.
+                if stored == request.password:
+                    return {"success": True, "message": "Login successful"}
+                raise HTTPException(status_code=401, detail="Invalid username or password")
+    except HTTPException:
+        raise
     except Exception as e:
-        print("DB Error:", e)
+        print("DB Error:", e, flush=True)
         raise HTTPException(status_code=500, detail="Server error")
-    finally:
-        try:
-            if cursor:
-                cursor.close()
-        except Exception:
-            pass
-        try:
-            if conn and conn.is_connected():
-                conn.close()
-        except Exception:
-            pass

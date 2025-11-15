@@ -1,24 +1,44 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from database import get_db_pool
+from Login import router as login_router  # type: ignore
+from Threshold import router as threshold_router
 from astar import a_star
 import asyncio
 
-app = FastAPI()
+app = FastAPI(
+    title="UMBC Accessibility Map API",
+    description="Backend for routing, reports, authentication, and threshold controls",
+    version="1.0"
+)
+
 db_pool = None
 
+# allow frontend to call backend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # or ["http://localhost:3000"] if using React
+    allow_origins=["*"],  # change to your frontend domain when deployed
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# include routers from other modules
+app.include_router(login_router, prefix="/auth", tags=["Authentication"])
+app.include_router(threshold_router, prefix="/main", tags=["Main Page"])
+
+
 @app.on_event("startup")
 async def startup():
+    """Initialize shared resources like the DB pool on startup."""
     global db_pool
     db_pool = await get_db_pool()
+
+
+@app.get("/")
+def home():
+    return {"status": "API Running", "message": "Welcome to the UMBC Accessibility Backend!"}
+
 
 @app.get("/shortest-path")
 async def shortest_path(start_building: str = Query(...), end_building: str = Query(...)):
@@ -112,3 +132,10 @@ async def shortest_path(start_building: str = Query(...), end_building: str = Qu
             path_names = [node_to_name.get(node_id, f"unknown_{node_id}") for node_id in best_path]
 
             return {"path": path_names, "total_time_sec": best_cost}
+
+
+if __name__ == "__main__":
+    # Run with: python main.py (for quick dev runs)
+    import uvicorn
+
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
